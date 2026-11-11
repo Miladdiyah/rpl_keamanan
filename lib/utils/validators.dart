@@ -63,4 +63,71 @@ class Validators {
     }
     return null;
   }
+
+  // ===== LATIHAN 3: validasi tambahan =====
+
+  /// Memvalidasi nomor telepon: hanya angka, 10-13 digit.
+  ///
+  /// Mengembalikan pesan error jika tidak valid, atau `null` jika valid.
+  static String? validatePhone(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Nomor telepon tidak boleh kosong';
+    }
+    final phone = value.trim();
+    if (!RegExp(r'^\d+$').hasMatch(phone)) {
+      return 'Nomor telepon hanya boleh berisi angka';
+    }
+    if (!RegExp(r'^\d{10,13}$').hasMatch(phone)) {
+      return 'Nomor telepon harus terdiri dari 10-13 digit';
+    }
+    return null;
+  }
+
+  /// Memvalidasi URL: harus dimulai dengan `http://` atau `https://`.
+  ///
+  /// Mengembalikan pesan error jika tidak valid, atau `null` jika valid.
+  static String? validateUrl(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'URL tidak boleh kosong';
+    }
+    final url = value.trim();
+    final regex = RegExp(r'^https?://[^\s/$?#]+[^\s]*$', caseSensitive: false);
+    if (!regex.hasMatch(url)) {
+      return 'URL tidak valid. Harus diawali http:// atau https://';
+    }
+    return null;
+  }
+
+  /// Memvalidasi password: minimal 8 karakter, mengandung huruf kapital,
+  /// angka, dan simbol.
+  ///
+  /// Mengembalikan pesan error jika tidak valid, atau `null` jika valid.
+  static String? validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Password tidak boleh kosong';
+    }
+    if (value.length < 8) {
+      return 'Password minimal 8 karakter';
+    }
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+      return 'Password harus mengandung huruf kapital';
+    }
+    if (!RegExp(r'\d').hasMatch(value)) {
+      return 'Password harus mengandung angka';
+    }
+    if (!RegExp(r'[^A-Za-z0-9\s]').hasMatch(value)) {
+      return 'Password harus mengandung simbol';
+    }
+    return null;
+  }
+
+  /// Versi boolean dari [validatePhone].
+  static bool isValidPhone(String phone) => validatePhone(phone) == null;
+
+  /// Versi boolean dari [validateUrl].
+  static bool isValidUrl(String url) => validateUrl(url) == null;
+
+  /// Versi boolean dari [validatePassword].
+  static bool isValidPassword(String password) =>
+      validatePassword(password) == null;
 }

@@ -1,47 +1,38 @@
 import 'package:flutter/material.dart';
 
+import '../services/api_service.dart';
 import '../models/user.dart';
-import '../repositories/user_repository.dart';
-import '../repositories/user_repository_impl.dart';
-import '../widgets/user_card.dart';
 
-/// Halaman untuk menampilkan daftar pengguna.
 class UserListScreen extends StatefulWidget {
-  final UserRepository? repository;
-
-  const UserListScreen({super.key, this.repository});
+  const UserListScreen({super.key});
 
   @override
   State<UserListScreen> createState() => _UserListScreenState();
 }
 
 class _UserListScreenState extends State<UserListScreen> {
-  late final UserRepository _repository;
+  final ApiService _apiService = ApiService();
 
   List<User> _users = [];
   bool _isLoading = true;
-  String? _errorMessage;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-
-    _repository = widget.repository ?? UserRepositoryImpl();
-
     _loadUsers();
   }
 
-  /// Mengambil data pengguna dari repository.
   Future<void> _loadUsers() async {
-    if (!mounted) return;
-
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _error = null;
     });
 
     try {
-      final users = await _repository.getUsers();
+      debugPrint('Memanggil ApiService.getUsers()');
+
+      final users = await _apiService.getUsers();
 
       if (!mounted) return;
 
@@ -53,130 +44,59 @@ class _UserListScreenState extends State<UserListScreen> {
       if (!mounted) return;
 
       setState(() {
-        _errorMessage = e.toString();
+        _error = e.toString();
         _isLoading = false;
       });
     }
   }
 
   @override
+  void dispose() {
+    _apiService.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daftar Pengguna'),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadUsers,
-            tooltip: 'Muat ulang',
-          ),
-        ],
+      appBar: AppBar(title: const Text('Daftar Pengguna')),
+      body: RefreshIndicator(
+        onRefresh: _loadUsers,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? ListView(
+                children: [
+                  const SizedBox(height: 150),
+                  Center(child: Text(_error!)),
+                  Center(
+                    child: TextButton(
+                      onPressed: _loadUsers,
+                      child: const Text('Coba Lagi'),
+                    ),
+                  ),
+                ],
+              )
+            : _users.isEmpty
+            ? ListView(
+                children: const [
+                  SizedBox(height: 150),
+                  Center(child: Text('Tidak ada data pengguna')),
+                ],
+              )
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: _users.length,
+                itemBuilder: (context, index) {
+                  final user = _users[index];
+
+                  return ListTile(
+                    leading: CircleAvatar(child: Text('${index + 1}')),
+                    title: Text(user.toString()),
+                  );
+                },
+              ),
       ),
-      body: _buildBody(),
-    );
-  }
-
-  /// Menentukan tampilan berdasarkan kondisi data.
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Memuat data...'),
-          ],
-        ),
-      );
-    }
-
-    if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              const Text(
-                'Terjadi Kesalahan',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _loadUsers,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Coba Lagi'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (_users.isEmpty) {
-      return const Center(child: Text('Tidak ada data pengguna'));
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadUsers,
-      child: ListView.builder(
-        itemCount: _users.length,
-        itemBuilder: (context, index) {
-          final user = _users[index];
-
-          return UserCard(user: user, onTap: () => _showUserDetail(user));
-        },
-      ),
-    );
-  }
-
-  /// Menampilkan detail pengguna.
-  void _showUserDetail(User user) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user.name,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text('Username: ${user.username}'),
-              Text('Email: ${user.email}'),
-              Text('Telepon: ${user.phone}'),
-              Text('Website: ${user.website}'),
-              Text('Perusahaan: ${user.companyName}'),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Tutup'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
