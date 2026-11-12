@@ -1,21 +1,13 @@
 import 'package:flutter/foundation.dart';
 
-/// Level log yang tersedia, dari paling ringan ke paling serius.
+/// Level log aplikasi.
 enum LogLevel { debug, info, warning, error }
 
-/// Logger terstruktur dan aman.
+/// Logger terstruktur untuk kebutuhan debugging.
 ///
-/// Aturan:
-/// - Log hanya tampil di mode debug ([kDebugMode]); di release tidak ada output.
-/// - Pesan otomatis disamarkan oleh [maskSensitive] agar token, password,
-///   PIN, API key, dan email tidak ikut tercetak.
-/// - Tetap jangan memasukkan data sensitif ke pesan log.
-///
-/// Contoh:
-/// ```dart
-/// Logger.info('Request GET /users', tag: 'API');
-/// Logger.error('Gagal memuat data', tag: 'API', error: e);
-/// ```
+/// Log hanya ditampilkan pada mode debug.
+/// Data sensitif seperti token, password, API key,
+/// dan email akan disamarkan.
 class Logger {
   Logger._();
 
@@ -31,51 +23,43 @@ class Logger {
 
   static final RegExp _emailPattern = RegExp(r'[\w.+\-]+@[\w\-]+(\.[\w\-]+)+');
 
-  /// Menyamarkan data sensitif pada [message].
-  ///
-  /// Contoh: `token=abc123` menjadi `token: ***`,
-  /// `user@mail.com` menjadi `***@***`.
+  /// Menyamarkan informasi sensitif dalam pesan log.
   static String maskSensitive(String message) {
     return message
         .replaceAll(_bearerPattern, 'Bearer ***')
-        .replaceAllMapped(_keyValuePattern, (m) => '${m.group(1)}: ***')
+        .replaceAllMapped(_keyValuePattern, (match) => '${match.group(1)}: ***')
         .replaceAll(_emailPattern, '***@***');
   }
 
-  /// Log level debug: detail teknis untuk pengembangan.
+  /// Log untuk informasi debugging.
   static void debug(String message, {String tag = 'APP'}) {
-    _log(LogLevel.debug, message, tag, null);
+    _log(LogLevel.debug, message, tag);
   }
 
-  /// Log level info: alur normal aplikasi.
+  /// Log informasi normal aplikasi.
   static void info(String message, {String tag = 'APP'}) {
-    _log(LogLevel.info, message, tag, null);
+    _log(LogLevel.info, message, tag);
   }
 
-  /// Log level warning: sesuatu yang tidak ideal tapi tidak fatal.
+  /// Log peringatan.
   static void warning(String message, {String tag = 'APP'}) {
-    _log(LogLevel.warning, message, tag, null);
+    _log(LogLevel.warning, message, tag);
   }
 
-  /// Log level error: kegagalan. [error] opsional ikut dicatat (disamarkan).
-  static void error(String message, {String tag = 'APP', Object? error}) {
-    _log(LogLevel.error, message, tag, error);
+  /// Log kesalahan tanpa mencetak detail sensitif.
+  static void error(String message, {String tag = 'APP'}) {
+    _log(LogLevel.error, message, tag);
   }
 
-  static void _log(LogLevel level, String message, String tag, Object? error) {
-    // Hanya tampil di mode debug
+  static void _log(LogLevel level, String message, String tag) {
     if (!kDebugMode) return;
 
-    final buffer = StringBuffer()
-      ..write(DateTime.now().toIso8601String())
-      ..write(' [${level.name.toUpperCase()}]')
-      ..write('[$tag] ')
-      ..write(maskSensitive(message));
+    final safeMessage = maskSensitive(message);
 
-    if (error != null) {
-      buffer.write(' | ${maskSensitive(error.toString())}');
-    }
-
-    debugPrint(buffer.toString());
+    debugPrint(
+      '${DateTime.now().toIso8601String()} '
+      '[${level.name.toUpperCase()}][$tag] '
+      '$safeMessage',
+    );
   }
 }

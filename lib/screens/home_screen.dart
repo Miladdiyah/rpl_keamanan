@@ -3,12 +3,9 @@ import 'package:flutter/material.dart';
 import '../services/secure_storage_service.dart';
 import 'post_list_screen.dart';
 import 'user_list_screen.dart';
-import 'validator_demo_screen.dart'; // LATIHAN 3
-import 'user_list_screen.dart';
+import 'validator_demo_screen.dart';
 
-/// Halaman utama aplikasi.
-///
-/// Berisi demo secure storage dan tombol navigasi ke halaman data API.
+/// Halaman utama aplikasi RPL dan Keamanan.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -35,52 +32,81 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  /// Memeriksa token yang tersimpan.
   Future<void> _checkToken() async {
-    final hasToken = await _storageService.hasToken();
-    final token = await _storageService.getToken();
-    if (!mounted) return;
-    setState(() {
-      _hasToken = hasToken;
-      _savedToken = token;
-    });
+    try {
+      final hasToken = await _storageService.hasToken();
+      final token = await _storageService.getToken();
+
+      if (!mounted) return;
+
+      setState(() {
+        _hasToken = hasToken;
+        _savedToken = token;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      _showMessage('Gagal memeriksa token.', Colors.red);
+    }
   }
 
-  /// Menampilkan sebagian token saja (aman untuk token pendek).
+  /// Menampilkan token dalam bentuk tersamarkan.
   String _maskToken(String? token) {
     if (token == null || token.isEmpty) return '-';
     if (token.length <= 6) return '••••';
+
     return '${token.substring(0, 6)}••••';
   }
 
+  /// Menampilkan pesan kepada pengguna.
   void _showMessage(String message, Color color) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
   }
 
+  /// Menyimpan token ke secure storage.
   Future<void> _saveToken() async {
-    if (_tokenController.text.trim().isEmpty) {
-      _showMessage('Token tidak boleh kosong', Colors.red);
+    final token = _tokenController.text.trim();
+
+    if (token.isEmpty) {
+      _showMessage('Token tidak boleh kosong.', Colors.red);
       return;
     }
 
-    await _storageService.saveToken(_tokenController.text.trim());
-    _tokenController.clear();
-    await _checkToken();
+    try {
+      await _storageService.saveToken(token);
 
-    if (mounted) {
-      _showMessage('Token berhasil disimpan di secure storage', Colors.green);
+      _tokenController.clear();
+      await _checkToken();
+
+      if (!mounted) return;
+
+      _showMessage('Token berhasil disimpan.', Colors.green);
+    } catch (_) {
+      if (!mounted) return;
+
+      _showMessage('Gagal menyimpan token.', Colors.red);
     }
   }
 
+  /// Menghapus token dari secure storage.
   Future<void> _deleteToken() async {
-    await _storageService.deleteToken();
-    await _checkToken();
+    try {
+      await _storageService.deleteToken();
+      await _checkToken();
 
-    if (mounted) {
-      _showMessage('Token berhasil dihapus', Colors.orange);
+      if (!mounted) return;
+
+      _showMessage('Token berhasil dihapus.', Colors.orange);
+    } catch (_) {
+      if (!mounted) return;
+
+      _showMessage('Gagal menghapus token.', Colors.red);
     }
   }
 
+  /// Membuat judul bagian.
   Widget _sectionTitle(IconData icon, Color color, String title) {
     return Row(
       children: [
@@ -94,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Tombol navigasi menuju halaman tertentu.
   Widget _navButton({
     required IconData icon,
     required String label,
@@ -104,10 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const UserListScreen()),
-          );
+          Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
         },
         icon: Icon(icon),
         label: Text(label),
@@ -129,14 +153,14 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Section 1: Secure Storage
+            // Bagian Secure Storage
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -147,12 +171,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Simpan token di secure storage (terenkripsi AES).',
+                      'Simpan token menggunakan secure storage.',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _tokenController,
+                      obscureText: true,
                       decoration: const InputDecoration(
                         labelText: 'Token',
                         hintText: 'Masukkan token dummy',
@@ -168,10 +193,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             onPressed: _saveToken,
                             icon: const Icon(Icons.save),
                             label: const Text('Simpan'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.deepPurple,
-                              foregroundColor: Colors.white,
-                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -190,9 +211,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       decoration: BoxDecoration(
                         color: _hasToken ? Colors.green[50] : Colors.red[50],
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: _hasToken ? Colors.green : Colors.red,
-                        ),
                       ),
                       child: Row(
                         children: [
@@ -204,7 +222,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           Expanded(
                             child: Text(
                               _hasToken
-                                  ? 'Token tersimpan: ${_maskToken(_savedToken)}'
+                                  ? 'Token tersimpan: '
+                                        '${_maskToken(_savedToken)}'
                                   : 'Belum ada token tersimpan',
                               style: TextStyle(
                                 color: _hasToken
@@ -224,17 +243,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 16),
 
-            // Section 2: Data dari API (lewat Repository)
+            // Bagian data API
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _sectionTitle(Icons.cloud, Colors.blue, 'Data dari API'),
                     const SizedBox(height: 8),
                     const Text(
-                      'Data diambil melalui Repository pattern.',
+                      'Data diambil melalui Repository Pattern.',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 16),
@@ -258,10 +277,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 16),
 
-            // Section 3 (LATIHAN 3): Demo validasi input
+            // Bagian validasi input
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -272,7 +291,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Coba validasi telepon, URL, password, dan sanitasi input.',
+                      'Demo validasi telepon, URL, password, '
+                      'dan sanitasi input.',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 16),
@@ -289,30 +309,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 16),
 
-            // Section 4: Catatan Keamanan
+            // Catatan keamanan
             Card(
               color: Colors.amber[50],
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.security, color: Colors.amber[800]),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Catatan Keamanan',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                    _sectionTitle(
+                      Icons.security,
+                      Colors.amber,
+                      'Catatan Keamanan',
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      '1. Base URL dan API key disimpan di file .env.\n'
-                      '2. File .env masuk .gitignore.\n'
-                      '3. Jangan pernah mencetak token ke log.\n'
-                      '4. Gunakan HTTPS untuk komunikasi API.',
+                      '1. Konfigurasi disimpan di .env.\n'
+                      '2. File .env dimasukkan ke .gitignore.\n'
+                      '3. Jangan mencetak token ke log.\n'
+                      '4. Gunakan HTTPS untuk API.',
                       style: TextStyle(fontSize: 12),
                     ),
                   ],

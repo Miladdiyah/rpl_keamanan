@@ -50,3 +50,12 @@ app.*.map.json
 
 # Environment variables
 .env
+
+# Flutter generated files
+.dart_tool/
+.packages
+build/
+
+# IDE
+.idea/
+.vscode/
